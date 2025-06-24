@@ -1,0 +1,153 @@
+#define IO_USERNAME  "iotdata1111"
+#define IO_KEY   	"aio_PmnL70h6HVL2CmRUCeWGJmh3auoo"
+#define WIFI_SSID   "project1"
+#define WIFI_PASS   "project1"
+#include "AdafruitIO_WiFi.h"
+#if defined(USE_AIRLIFT) || defined(ADAFRUIT_METRO_M4_AIRLIFT_LITE)
+#if !defined(SPIWIFI_SS) // if the wifi definition isnt in the board variant
+#define SPIWIFI SPI
+#define SPIWIFI_SS 10  // Chip select pin
+#define NINA_ACK 9	// a.k.a BUSY or READY pin
+#define NINA_RESETN 6 // Reset pin
+#define NINA_GPIO0 -1 // Not connected
+#endif
+
+AdafruitIO_WiFi io(IO_USERNAME, IO_KEY, WIFI_SSID, WIFI_PASS, SPIWIFI_SS, NINA_ACK, NINA_RESETN, NINA_GPIO0, &SPIWIFI);
+#elseAdafruitIO_WiFi io(IO_USERNAME, IO_KEY, WIFI_SSID, WIFI_PASS);
+#endif
+
+#define trigPin 11 //Sensor Echo pin connected to Arduino pin 13
+#define echoPin 10 //Sensor Trip pin connected to Arduino pin 12
+int cnt =0;
+#include <SoftwareSerial.h>
+#include <Wire.h>
+#include <LiquidCrystal_PCF8574.h>
+LiquidCrystal_PCF8574 LCD(0x27);  // set the LCD address to 0x27 for a 16 chars and 2 line display
+#include <DHT.h>
+#include <DHT_U.h>
+#define DHTPIN        	12     	// Pin which is connected to the DHT sensor.
+#define DHTTYPE       	DHT11 	// DHT 11
+DHT_Unified dht(DHTPIN, DHTTYPE);
+uint32_t delayMS;
+unsigned long time_prev=0;
+unsigned long time_now;
+bool change_update=false;
+bool showespcom=true;
+int a1=0;
+int a2=0;
+int gas=0;
+int vol=0;
+int hat=0;
+void setup()
+{
+Serial.begin(9600);
+Serial.println("Getting In..");
+dht.begin();
+Wire.begin();
+pinMode(trigPin, OUTPUT);
+pinMode(echoPin, INPUT);
+pinMode(8, OUTPUT);
+ pinMode(9, OUTPUT);
+ digitalWrite(8, LOW);
+ digitalWrite(9, LOW);
+LCD.begin(16, 2);  // initialize the lcd
+LCD.setBacklight(255);
+LCD.print("H:");  //Print Message on First Row
+LCD.setCursor(0,1);  //Set LCD cursor to upper left corner, column 0, row 0
+LCD.print("T:");  //Print Message on First Row
+sensor_t sensor;
+dht.temperature().getSensor(&sensor);
+dht.humidity().getSensor(&sensor);
+delayMS = sensor.min_delay / 1000;
+}
+void loop()
+{
+gas=analogRead(A0);
+vol=analogRead(A1);
+vol=vol/7;
+sensors_event_t event;  
+dht.temperature().getEvent(&event);
+a1=event.temperature;
+dht.humidity().getEvent(&event);
+a2=event.relative_humidity;
+  long duration, distance;
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  duration = pulseIn(echoPin, HIGH);
+  distance = (duration/2) / 29.1;
+//  Serial.println(distance);
+if(distance<=5)
+{
+  hat=1;
+LCD.setCursor(13,1);  //Set LCD cursor to upper left corner, column 0, row 0
+LCD.print(hat);
+}
+
+if(distance>5)
+{
+  hat=0;
+ 
+LCD.setCursor(13,1);  //Set LCD cursor to upper left corner, column 0, row 0
+LCD.print(hat);
+}
+
+if(a1>vol)
+{
+digitalWrite(8, HIGH);
+digitalWrite(9, LOW);
+}
+
+if(a1<=vol)
+{
+digitalWrite(8, LOW);
+digitalWrite(9, HIGH);
+}
+
+LCD.setCursor(8,1);  //Set LCD cursor to upper left corner, column 0, row 0
+LCD.print("   ");
+LCD.setCursor(8,1);  //Set LCD cursor to upper left corner, column 0, row 0
+LCD.print(vol);
+
+
+LCD.setCursor(4,1);  //Set LCD cursor to upper left corner, column 0, row 0
+LCD.print("   ");
+LCD.setCursor(4,1);  //Set LCD cursor to upper left corner, column 0, row 0
+LCD.print(a1);  //Print Message on First Row
+
+LCD.setCursor(4,0);  //Set LCD cursor to upper left corner, column 0, row 0
+LCD.print("   ");
+LCD.setCursor(4,0);  //Set LCD cursor to upper left corner, column 0, row 0
+LCD.print(a2);
+
+LCD.setCursor(8,0);  //Set LCD cursor to upper left corner, column 0, row 0
+LCD.print("	");  //Print Message on First Row
+LCD.setCursor(8,0);  //Set LCD cursor to upper left corner, column 0, row 0
+LCD.print(gas);  //Print Message on First Row
+
+LCD.setCursor(13,0);  //Set LCD cursor to upper left corner, column 0, row 0
+LCD.print(" 	");  //Print Message on First Row
+LCD.setCursor(13,0);  //Set LCD cursor to upper left corner, column 0, row 0
+LCD.print(distance);  //Print Message on First Row
+
+cnt=cnt+1;
+delay(800);
+//Serial.println(cnt);
+if(cnt>10)
+{
+cnt=0;  
+Serial.print("*");
+Serial.print(a1);
+Serial.print(",");
+Serial.print(a2);
+Serial.print(",");
+Serial.print(gas);
+Serial.print(",");
+Serial.print(hat);
+Serial.print(",");
+Serial.print("0");
+Serial.println("#");
+}
+} 
